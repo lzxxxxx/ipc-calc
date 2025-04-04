@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专利价值评估系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2563eb',
+            secondary: '#64748b'
+          },
+          borderRadius: {
+            'none': '0px',
+            'sm': '2px',
+            DEFAULT: '4px',
+            'md': '8px',
+            'lg': '12px',
+            'xl': '16px',
+            '2xl': '20px',
+            '3xl': '24px',
+            'full': '9999px',
+            'button': '4px'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    input[type="file"] {
+      display: none;
+    }
+
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      transition: all 0.3s;
+    }
+
+    .upload-zone:hover {
+      border-color: #2563eb;
+    }
+
+    .progress-bar {
+      transition: width 0.3s;
+    }
+  </style>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="min-h-[1024px] bg-gray-50">
+  <div class="max-w-[1440px] mx-auto px-8 py-6">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">专利价值评估系统</h1>
+      <p class="mt-2 text-gray-600">上传专利数据，快速获取专业的价值评估分析</p>
+    </header>
+    <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+      <div class="upload-zone rounded-lg p-12 text-center cursor-pointer">
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+        <i class="fas fa-cloud-upload-alt text-4xl text-primary mb-4"></i>
+        <h3 class="text-xl font-semibold mb-2">点击或拖拽上传 Excel 文件</h3>
+        <p class="text-gray-500">支持 .xlsx, .xls 格式文件</p>
+      </div>
+      <div class="hidden mt-4">
+        <div class="flex items-center">
+          <div class="flex-1 bg-gray-200 rounded-full h-2">
+            <div class="progress-bar bg-primary h-2 rounded-full" style="width: 0%"></div>
+          </div>
+          <span class="ml-4 text-sm text-gray-600">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold">专利价值评估分析</h2>
+        <div class="space-x-4">
+        </div>
+      </div>
+      <div class="space-y-6">
+        <!-- 专利1 -->
+        <div class="border border-gray-200 rounded-lg p-6">
+          <div class="mb-6">
+            <h3 class="text-xl font-bold text-gray-900">CN123456789A</h3>
+            <p class="text-gray-600 mt-1">一种基于机器学习的图像识别方法</p>
+          </div>
+          <div class="grid grid-cols-3 gap-6 mb-4">
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">技术价值</h4>
+                <span class="text-2xl font-bold text-primary">85</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术先进性</span>
+                  <span class="font-medium text-gray-900">88</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术独立性</span>
+                  <span class="font-medium text-gray-900">82</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术成熟度</span>
+                  <span class="font-medium text-gray-900">85</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">法律价值</h4>
+                <span class="text-2xl font-bold text-primary">92</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">专利稳定性</span>
+                  <span class="font-medium text-gray-900">94</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">不可规避性</span>
+                  <span class="font-medium text-gray-900">90</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">多国申请</span>
+                  <span class="font-medium text-gray-900">92</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">经济价值</h4>
+                <span class="text-2xl font-bold text-primary">78</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">经济寿命</span>
+                  <span class="font-medium text-gray-900">75</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">市场占有</span>
+                  <span class="font-medium text-gray-900">81</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <span class="text-lg text-gray-600 mr-4">综合评分</span>
+            <span class="text-4xl font-bold text-primary">85</span>
+          </div>
+        </div>
+        <!-- 专利2 -->
+        <div class="border border-gray-200 rounded-lg p-6">
+          <div class="mb-6">
+            <h3 class="text-xl font-bold text-gray-900">CN987654321A</h3>
+            <p class="text-gray-600 mt-1">一种智能传感器网络优化方法</p>
+          </div>
+          <div class="grid grid-cols-3 gap-6 mb-4">
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">技术价值</h4>
+                <span class="text-2xl font-bold text-primary">89</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术先进性</span>
+                  <span class="font-medium text-gray-900">91</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术独立性</span>
+                  <span class="font-medium text-gray-900">88</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术成熟度</span>
+                  <span class="font-medium text-gray-900">87</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">法律价值</h4>
+                <span class="text-2xl font-bold text-primary">86</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">专利稳定性</span>
+                  <span class="font-medium text-gray-900">88</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">不可规避性</span>
+                  <span class="font-medium text-gray-900">85</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">多国申请</span>
+                  <span class="font-medium text-gray-900">84</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">经济价值</h4>
+                <span class="text-2xl font-bold text-primary">83</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">经济寿命</span>
+                  <span class="font-medium text-gray-900">82</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">市场占有</span>
+                  <span class="font-medium text-gray-900">84</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <span class="text-lg text-gray-600 mr-4">综合评分</span>
+            <span class="text-4xl font-bold text-primary">86</span>
+          </div>
+        </div>
+        <!-- 专利3 -->
+        <div class="border border-gray-200 rounded-lg p-6">
+          <div class="mb-6">
+            <h3 class="text-xl font-bold text-gray-900">CN246813579A</h3>
+            <p class="text-gray-600 mt-1">一种基于区块链的数据安全存储方法</p>
+          </div>
+          <div class="grid grid-cols-3 gap-6 mb-4">
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">技术价值</h4>
+                <span class="text-2xl font-bold text-primary">92</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术先进性</span>
+                  <span class="font-medium text-gray-900">94</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术独立性</span>
+                  <span class="font-medium text-gray-900">91</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">技术成熟度</span>
+                  <span class="font-medium text-gray-900">90</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">法律价值</h4>
+                <span class="text-2xl font-bold text-primary">88</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">专利稳定性</span>
+                  <span class="font-medium text-gray-900">89</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">不可规避性</span>
+                  <span class="font-medium text-gray-900">87</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">多国申请</span>
+                  <span class="font-medium text-gray-900">88</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-lg text-gray-900">经济价值</h4>
+                <span class="text-2xl font-bold text-primary">90</span>
+              </div>
+              <div class="mt-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">经济寿命</span>
+                  <span class="font-medium text-gray-900">91</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">市场占有</span>
+                  <span class="font-medium text-gray-900">89</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <span class="text-lg text-gray-600 mr-4">综合评分</span>
+            <span class="text-4xl font-bold text-primary">90</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const uploadZone = document.querySelector('.upload-zone');
+    const fileInput = document.getElementById('fileInput');
+    uploadZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('border-primary');
+    });
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('border-primary');
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('border-primary');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+    function handleFile(file) {
+      if (!file.name.match(/\.(xlsx|xls)$/)) {
+        alert('请上传 Excel 文件');
+        return;
+      }
+      const progress = document.querySelector('.progress-bar');
+      const progressText = progress.nextElementSibling;
+      const progressContainer = progress.parentElement.parentElement;
+      progressContainer.classList.remove('hidden');
+      let width = 0;
+      const interval = setInterval(() => {
+        if (width >= 100) {
+          clearInterval(interval);
+        } else {
+          width += 1;
+          progress.style.width = width + '%';
+          progressText.textContent = width + '%';
+        }
+      }, 20);
+    }
+  </script>
+</body>
+
+<script src="renderer.js"></script>
+
+</html>

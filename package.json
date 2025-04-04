@@ -1,0 +1,70 @@
+{
+  "name": "project-score-calculator",
+  "version": "1.0.0",
+  "description": "评分系统",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "package": "electron-forge package",
+    "app:dir": "electron-builder --dir",
+    "app:dist": "electron-builder",
+    "build:win": "electron-builder --win",
+    "make": "electron-forge make",
+    "pack-by-builder": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder"
+  },
+  "author": "zhanYang",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.7.0",
+    "@electron-forge/maker-deb": "^7.7.0",
+    "@electron-forge/maker-rpm": "^7.7.0",
+    "@electron-forge/maker-squirrel": "^7.7.0",
+    "@electron-forge/maker-zip": "^7.7.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.7.0",
+    "@electron-forge/plugin-fuses": "^7.7.0",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^34.2.0",
+    "electron-reload": "^2.0.0-alpha.1",
+    "electron-winstaller": "^5.4.0"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1",
+    "python-shell": "^5.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "com.zhan.calculator",
+    "productName": "aaaaa",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "category": "your.app.category.type"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "aaaaa"
+    },
+    "compression": "store",
+    "extraFiles": [
+      {
+        "from": "dist/win-unpacked/aaaaa.exe",
+        "to": "."
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "dist/win-unpacked/aaaaa.exe",
+        "to": "."
+      }
+    ]
+  }
+}
