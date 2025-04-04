@@ -62,7 +62,7 @@
     </header>
     <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
       <div class="upload-zone rounded-lg p-12 text-center cursor-pointer">
-        <input type="file" id="fileInput" accept=".xlsx,.xls">
+        <input type="file" id="fileInput" class="hidden" accept=".xlsx,.xls">
         <i class="fas fa-cloud-upload-alt text-4xl text-primary mb-4"></i>
         <h3 class="text-xl font-semibold mb-2">点击或拖拽上传 Excel 文件</h3>
         <p class="text-gray-500">支持 .xlsx, .xls 格式文件</p>
@@ -71,8 +71,8 @@
         <div class="flex items-center">
           <div class="flex-1 bg-gray-200 rounded-full h-2">
             <div class="progress-bar bg-primary h-2 rounded-full" style="width: 0%"></div>
+            <span class="ml-4 text-sm text-gray-600">0%</span>
           </div>
-          <span class="ml-4 text-sm text-gray-600">0%</span>
         </div>
       </div>
     </div>
@@ -293,55 +293,7 @@
       </div>
     </div>
   </div>
-  <script>
-    const uploadZone = document.querySelector('.upload-zone');
-    const fileInput = document.getElementById('fileInput');
-    uploadZone.addEventListener('click', () => {
-      fileInput.click();
-    });
-    uploadZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadZone.classList.add('border-primary');
-    });
-    uploadZone.addEventListener('dragleave', () => {
-      uploadZone.classList.remove('border-primary');
-    });
-    uploadZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadZone.classList.remove('border-primary');
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleFile(files[0]);
-      }
-    });
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        handleFile(e.target.files[0]);
-      }
-    });
-    function handleFile(file) {
-      if (!file.name.match(/\.(xlsx|xls)$/)) {
-        alert('请上传 Excel 文件');
-        return;
-      }
-      const progress = document.querySelector('.progress-bar');
-      const progressText = progress.nextElementSibling;
-      const progressContainer = progress.parentElement.parentElement;
-      progressContainer.classList.remove('hidden');
-      let width = 0;
-      const interval = setInterval(() => {
-        if (width >= 100) {
-          clearInterval(interval);
-        } else {
-          width += 1;
-          progress.style.width = width + '%';
-          progressText.textContent = width + '%';
-        }
-      }, 20);
-    }
-  </script>
+  <script src="renderer.js"></script>
 </body>
-
-<script src="renderer.js"></script>
 
 </html>
