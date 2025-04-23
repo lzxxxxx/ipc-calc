@@ -11,7 +11,7 @@ const XLSX = require('xlsx')
 
 // 计算 B1.1 分数
 function calculateB1_1(row) {
-    const citedPatents = parseFloat(row['引用专利数量'] || 0);
+    const citedPatents = parseFloat(row['引文申请号数量'] || 0);
     const documentPages = parseFloat(row['文献页数'] || 1); // 避免除以0
     const score = (citedPatents / documentPages) * 5;
     return Math.min(score, 10); // 超过10分按10分算
@@ -19,7 +19,7 @@ function calculateB1_1(row) {
 
 // 计算 B1.2 分数
 function calculateB1_2(row) {
-    const independentClaim = row['独立权利要求'] || '';
+    const independentClaim = row['独立权利要求-原文'] || '';
     const totalCount = independentClaim.length; // 独立权利要求总字数
     
     // 查找"其特征"在文本中的位置
@@ -39,20 +39,20 @@ function calculateB1_2(row) {
 
 // 计算 B1.3 分数
 function calculateB1_3(row) {
-    const claimCount = parseFloat(row['权利要求数'] || 0);
+    const claimCount = parseFloat(row['权利要求数量'] || 0);
     return Math.min(claimCount, 10); // 最高10分
 }
 
 // 计算 B2.1 分数 (权利要求数量/文献页数)
 function calculateB2_1(row) {
-    const claimCount = parseFloat(row['权利要求数'] || 0);
+    const claimCount = parseFloat(row['权利要求数量'] || 0);
     const documentPages = parseFloat(row['文献页数'] || 1); // 避免除以0
-    return claimCount / documentPages;
+    return Math.min(claimCount / documentPages * 6, 10);
 }
 
 // 计算 B2.2 分数 ((1 - 独立权利要求中"其特征"后面的字数/独立权利要求总字数)×10)
 function calculateB2_2(row) {
-    const independentClaim = row['独立权利要求'] || '';
+    const independentClaim = row['独立权利要求-原文'] || '';
     const totalCount = independentClaim.length; // 独立权利要求总字数
     
     // 查找"其特征"在文本中的位置
@@ -66,7 +66,7 @@ function calculateB2_2(row) {
     
     // 避免除以0
     if (totalCount === 0) return 0;
-    
+    console.log('===11', featuresCount, totalCount, (1 - featuresCount / totalCount) * 10);
     // 计算 (1 - 特征字数/总字数) × 10
     return (1 - featuresCount / totalCount) * 10;
 }
@@ -84,10 +84,10 @@ function calculateMultiCountry(row) {
     let score = 0;
     
     // 检查是否包含特定国家/地区并累加分数
-    if (countries.includes('US')) score += 5;
-    if (countries.includes('EP')) score += 4;
-    if (countries.includes('JP')) score += 4;
-    if (countries.includes('KR')) score += 3;
+    if (countries.includes('美国')) score += 5;
+    if (countries.includes('欧洲')) score += 4;
+    if (countries.includes('日本')) score += 4;
+    if (countries.includes('韩国')) score += 3;
     
     // 确保最高分不超过10分
     return Math.min(score, 10);
@@ -95,28 +95,276 @@ function calculateMultiCountry(row) {
 
 // 计算经济寿命分数
 function calculateEconomicLife(row) {
-    // 获取预估到期日
-    const expiryDate = row['预估到期日'] || '';
+    // 获取申请日
+    const applicationDate = row['申请日'] || '';
     
-    // 如果预估到期日为空，返回0分
-    if (!expiryDate) return 0;
+    // 如果申请日为空，返回0分
+    if (!applicationDate) return 0;
     
-    // 提取年份
-    const expiryYear = parseInt(expiryDate.substring(0, 4));
+    // 将申请日转换为Date对象
+    const appDate = new Date(applicationDate);
+    
+    // 计算预估到期日（申请日+20年）
+    const expiryDate = new Date(appDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + 20);
     
     // 获取当前年份
     const currentYear = new Date().getFullYear();
     
     // 计算经济寿命分数
-    const score = (expiryYear - currentYear) * 0.5;
+    const score = (expiryDate.getFullYear() - currentYear) * 0.5;
     
-    // 确保最高分不超过10分
+    // 确保分数在0到10分之间
     return Math.min(Math.max(score, 0), 10);
+}
+
+// 计算AT1分数 (10-(今天日期-申请日）/400)
+function calculateAT1(row) {
+    // 获取申请日
+    const applicationDate = row['申请日'] || '';
+    
+    // 如果申请日为空，返回0分
+    if (!applicationDate) return 0;
+    
+    // 将申请日转换为Date对象
+    const appDate = new Date(applicationDate);
+    const today = new Date();
+    
+    // 计算日期差（毫秒）
+    const diffTime = Math.abs(today - appDate);
+    // 转换为天数
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 计算AT1分数
+    const score = 10 - (diffDays / 400);
+    
+    // 确保分数在0到10分之间
+    return score;
+}
+
+// 计算AT2分数（国际国内领先性）
+function calculateAT2(AC, AO) {
+    // 处理特殊情况
+    if (AC === 0 && AO === 0) return 2;  // 国内落后
+    // if (AC === 0 && AO !== 0) return 0;  // 国际落后
+    if (AC === 1 && AO === 0) return 10; // 国内空白
+
+    // 处理一般情况
+    if (AC >= 0.5) {
+        if (AO >= 0.5) return 9;  // 国际领先
+        if (AO > 0) return 8;     // 国内领先
+        if (AO === 0) return 7;   // 国内先进
+    } else {
+        if (AO <= 0.5) return 6;  // 国际跟随
+        if (AO === 0) return 5;   // 国内跟随
+    }
+
+    return 0; // 默认情况
+}
+
+// 获取基础数据
+async function fetchBaseData(query = '', countField = 'PTY') {
+    var myHeaders = new Headers();
+    myHeaders.append("Authorization", "1dabba12828146fab6f79754b9b5b587");
+    myHeaders.append("Content-Type", "application/json");
+
+    var raw = JSON.stringify({
+    "queryExpression": query,
+    "field": countField,
+    "mergeBy": "APE" //按申请号去重后保留公开最早文件
+    });
+
+    var requestOptions = {
+    method: 'POST',
+    headers: myHeaders,
+    body: raw,
+    redirect: 'follow'
+    };
+
+    try {
+        const response = await  fetch("https://himmpat.com/api/service/himmuc_api/patent_search/get_filter_results_by_query_expression", requestOptions)
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('获取基础数据时出错:', error);
+        throw error;
+    }
+
+}
+
+// 获取所有基础数据
+async function fetchAllBaseData(ipcQuery, applicantQuery) {
+    let allData = {};
+    const query0 = ipcQuery; //该ipc分类
+
+    const query1 = 'CN/apc AND CN/ctry' + ' AND ' + query0; //受理局为中国 且 专利权人为中国
+    const query2 = 'CN/apc' + ' AND ' + query0; //受理局为中国，受理局非中国的数量 直接用query0 - query2
+    const query7 = 'CN/ctry' + ' AND ' + query0; //专利权人为中国，专利权人为中国且受理局非中国，直接用query7 - query1
+
+    const query3 = 'N/state' + ' AND ' + query0; // 法律状态为无效，剩余都为有效
+    
+    const query4 = '2023/apd' + ' AND ' + query0; //申请日2023年
+    const query5 = '2024/apd' + ' AND ' + query0; //申请日2024年
+
+    const query6 = applicantQuery + ' AND ' + query3; //该专利申请人在该分类下的有效 
+
+    const queryConf = [
+        {
+            query: query0,
+            resKey: 'sum'
+        },
+        {
+            query: query1,
+            resKey: 'AC_1'
+        },
+        {
+            query: query2,
+            resKey: 'AC_2'
+        },
+        {
+            query: query7,
+            resKey: 'AC_3'
+        },
+        {
+            query: query3,
+            resKey: 'jishudulixing'
+        },
+        {
+            query: query4,
+            resKey: '2023sum'
+        },
+        {
+            query: query5,
+            resKey: '2024sum'
+        },
+        {
+            query: query4,
+            resKey: '2023personSum',
+            countField: 'PAS'
+        },
+        {
+            query: query5,
+            resKey: '2024personSum',
+            countField: 'PAS'
+        },
+        {
+            query: query6,
+            resKey: 'C2_1'
+        }
+    ];
+
+        // CN/apc AND (A or U or B or D)/pty
+
+    try {
+        // 使用Promise.all并行处理所有查询
+        const results = await Promise.all(
+            queryConf.map(async ({ query, resKey, countField }) => {
+                try {
+                    const response = await fetchBaseData(query, countField);
+                    //如果没有countField,把值汇总；有countField,返回key数量
+                    const data = countField ? Object.keys(response.data).length : Object.values(response.data).reduce((pre, cur) => +pre + +cur, 0)
+                    return { resKey, data };
+                } catch (error) {
+                    console.error(`获取${resKey}数据时出错:`, error);
+                    return { resKey, data: null };
+                }
+            })
+        );
+
+        // 将结果存储到allData中
+        results.forEach(({ resKey, data }) => {
+            allData[resKey] = data;
+        });
+
+    } catch (error) {
+        console.error('获取基础数据时出错:', error);
+    }
+
+    return allData;
+}
+
+// 计算技术成熟度得分
+function calculateTechnicalMaturity(baseData) {
+    // 计算2024年的值
+    const value2024 = Math.sqrt(baseData['2024sum'] * baseData['2024personSum']);
+    // 计算2023年的值
+    const value2023 = Math.sqrt(baseData['2023sum'] * baseData['2023personSum']);
+    // 计算差值
+    const score = value2024 - value2023;
+    
+    // 根据得分范围设置不同的分数
+    if (score > 5) {
+        return 6;  // 大于5，得6分
+    } else if (score >= 0) {
+        return 8;  // 5到0，得8分
+    } else if (score >= -5) {
+        return 8;  // 0到-5，得8分
+    } else {
+        return 5.5;  // 小于-5，得5.5分
+    }
+}
+
+// 计算专利价值度总分
+function calculatePatentValue(technicalValue, legalValue, economicValue) {
+    // 技术价值度部分 (46.64%)
+    const technicalScore = (
+        0.2343 * technicalValue.advancement +  // 技术先进性 23.43%
+        0.1367 * technicalValue.dependency +   // 技术独立性 13.67%
+        0.0954 * technicalValue.maturity       // 技术成熟度 9.54%
+    );
+
+    // 法律价值度部分 (36.23%)
+    const legalScore = (
+        0.1367 * legalValue.unavoidable +     // 不可规避性 13.67%
+        0.1562 * legalValue.stability.total + // 专利实施风险 15.62%
+        0.0694 * legalValue.multiCountry      // 多国申请情况 6.94%
+    );
+
+    // 经济价值度部分 (17.13%)
+    const economicScore = (
+        0.1041 * economicValue.life +         // 剩余经济寿命 10.41%
+        0.0672 * economicValue.marketShare    // 市场占有率 6.72%
+    );
+
+    // 计算总分
+    const totalScore = technicalScore + legalScore + economicScore;
+    
+    return totalScore;
 }
 
 // 添加异步数据处理函数
 async function processExcelData(jsonData) {
+    // 获取基础数据
+    const baseData = await Promise.all(jsonData.map(async (row) => {
+        return await fetchAllBaseData(row['IPC主分类'] + '/ic', row['申请人'] + '/paas');
+    }));
+    console.log('==========bae', baseData);
+    
+    // 计算系数
+    // const coefficients = calculateCoefficients(baseData);
+    
     return await Promise.all(jsonData.map(async (row, index) => {
+        // 计算技术先进性的子项
+        // AC（分析IPC分类号）=受理局为中国且专利权人为中国的专利数量/受理局的中国的专利数量
+        // AO（分析IPC分类号）=受理局为非中国且专利权人为中国的专利数量/受理局的非中国的专利数量
+        const AT1Score = calculateAT1(row);
+        const AC = baseData[index].AC_1/baseData[index].AC_2;
+        const AO = (baseData[index].AC_3 - baseData[index].AC_1)/(baseData[index].sum - baseData[index].AC_2);
+        const AT2Score = calculateAT2(AC, AO);
+        
+        // 计算技术先进性总分 (0.2AT1 + 0.8AT2)
+        const technicalAdvancementScore = 0.2 * AT1Score + 0.8 * AT2Score;
+
+        //技术独立性得分
+        const technicalDependencyScore = (baseData[index].sum - baseData[index].jishudulixing)/baseData[index].sum * 10;
+
+        //技术成熟度得分 = 开根号(2024sum * 2024personSum) - 开根号(2023sum * 2023personSum)
+        const technicalMaturityScore = calculateTechnicalMaturity(baseData[index]);
+
         // 计算专利稳定性的三个子项
         const B1_1 = calculateB1_1(row);  // 引用专利数量/文献页数×5
         const B1_2 = calculateB1_2(row);  // 独立权利要求中"其特征在于"后面的字数/独立权利要求总字数×10
@@ -134,10 +382,46 @@ async function processExcelData(jsonData) {
         // 计算经济寿命分数
         const economicLifeScore = calculateEconomicLife(row);
 
+        //计算市场占有率
+        const marketSharePercentage = (baseData[index].C2_1 / baseData[index].jishudulixing) * 100;
+        let marketShareScore;
+        if (marketSharePercentage > 40) {
+            marketShareScore = 10;
+        } else if (marketSharePercentage >= 30) {
+            marketShareScore = 8;
+        } else if (marketSharePercentage >= 20) {
+            marketShareScore = 6;
+        } else if (marketSharePercentage >= 10) {
+            marketShareScore = 4;
+        } else if (marketSharePercentage > 0) {
+            marketShareScore = 2;
+        } else {
+            marketShareScore = 0;
+        }
+        
+
+        // 计算专利价值度总分
+        const patentValue = calculatePatentValue(
+            {
+                advancement: technicalAdvancementScore,
+                dependency: technicalDependencyScore,
+                maturity: technicalMaturityScore
+            },
+            {
+                unavoidable: unavoidableScore,
+                stability: { total: stabilityScore },
+                multiCountry: multiCountryScore
+            },
+            {
+                life: economicLifeScore,
+                marketShare: marketShareScore
+            }
+        );
+
         return {
             id: index + 1,
-            publicationNumber: row['公开号'],
-            title: row['标题'],
+            publicationNumber: row['公开（公告）号'],
+            title: row['标题-原文'],
             legalValue: {
                 stability: {
                     total: parseFloat(stabilityScore.toFixed(2)),  // 专利稳定性总分
@@ -150,8 +434,14 @@ async function processExcelData(jsonData) {
             },
             economicValue: {
                 life: parseFloat(economicLifeScore.toFixed(2)),    // 经济寿命
-                marketShare: null    // 市场占有（待实现）
+                marketShare: marketShareScore
             },
+            technicalValue: {
+                advancement: parseFloat(technicalAdvancementScore.toFixed(2)),  // 技术先进性总分
+                dependency: parseFloat(technicalDependencyScore.toFixed(2)),  // 技术独立性总分
+                maturity: parseFloat(technicalMaturityScore.toFixed(2)),  // 技术成熟度总分
+            },
+            patentValue: parseFloat(patentValue.toFixed(2)),  // 专利价值度总分
             ...row
         };
     }));
@@ -216,8 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 更新分析面板中的数据
                     updateAnalysisPanel(processedData);
 
-                    // 打印处理后的数据
-                    console.log('Excel数据:', processedData);
                 } catch (error) {
                     console.error('解析Excel数据时出错:', error);
                     alert('解析文件时出错，请检查文件格式是否正确');
@@ -304,27 +592,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">技术价值度</h4>
-                        <span class="text-2xl font-bold text-primary">--</span>
+                        <span class="text-2xl font-bold text-primary">${(item.technicalValue.advancement * 0.2343 + item.technicalValue.dependency * 0.1367 + item.technicalValue.maturity * 0.0954).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
                         <span class="text-gray-600">技术先进性</span>
-                        <span class="font-medium text-gray-900">--</span>
+                        <span class="font-medium text-gray-900">${item.technicalValue.advancement}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                         <span class="text-gray-600">技术独立性</span>
-                        <span class="font-medium text-gray-900">--</span>
+                        <span class="font-medium text-gray-900">${item.technicalValue.dependency}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                         <span class="text-gray-600">技术成熟度</span>
-                        <span class="font-medium text-gray-900">--</span>
+                        <span class="font-medium text-gray-900">${item.technicalValue.maturity}</span>
                         </div>
                     </div>
                     </div>
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">法律价值度</h4>
-                        <span class="text-2xl font-bold text-primary">--</span>
+                        <span class="text-2xl font-bold text-primary">${(item.legalValue.unavoidable * 0.1367 + item.legalValue.stability.total * 0.1562 + item.legalValue.multiCountry * 0.0694).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -344,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">经济价值度</h4>
-                        <span class="text-2xl font-bold text-primary">--</span>
+                        <span class="text-2xl font-bold text-primary">${(item.economicValue.life * 0.1041 + item.economicValue.marketShare * 0.0672).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -353,14 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="flex justify-between text-sm">
                         <span class="text-gray-600">市场占有率</span>
-                        <span class="font-medium text-gray-900">--</span>
+                        <span class="font-medium text-gray-900">${item.economicValue.marketShare}</span>
                         </div>
                     </div>
                     </div>
                 </div>
                 <div class="bg-gray-50 rounded-lg p-4 text-center">
                     <span class="text-lg text-gray-600 mr-4">专利价值度</span>
-                    <span class="text-4xl font-bold text-primary">--</span>
+                    <span class="text-4xl font-bold text-primary">${item.patentValue}</span>
                 </div>
             `;
             analysisResults.appendChild(resultDiv);
