@@ -47,7 +47,7 @@ function calculateB1_3(row) {
 function calculateB2_1(row) {
     const claimCount = parseFloat(row['权利要求数量'] || 0);
     const documentPages = parseFloat(row['文献页数'] || 1); // 避免除以0
-    return Math.min(claimCount / documentPages * 6, 10);
+    return Math.min(claimCount / documentPages * 10, 10);
 }
 
 // 计算 B2.2 分数 ((1 - 独立权利要求中"其特征"后面的字数/独立权利要求总字数)×10)
@@ -75,6 +75,7 @@ function calculateB2_2(row) {
 function calculateUnavoidable(row) {
     const B2_1 = calculateB2_1(row);
     const B2_2 = calculateB2_2(row);
+    console.log('======123123', B2_1, B2_2);
     return (B2_1 + B2_2) / 2;
 }
 
@@ -163,7 +164,7 @@ function calculateAT2(AC, AO) {
 }
 
 // 获取基础数据
-async function fetchBaseData(query = '', countField = 'PTY') {
+async function fetchBaseData(query = '', countField = 'PTY', retryCount = 0) {
     var myHeaders = new Headers();
     myHeaders.append("Authorization", "1dabba12828146fab6f79754b9b5b587");
     myHeaders.append("Content-Type", "application/json");
@@ -182,18 +183,42 @@ async function fetchBaseData(query = '', countField = 'PTY') {
     };
 
     try {
-        const response = await  fetch("https://himmpat.com/api/service/himmuc_api/patent_search/get_filter_results_by_query_expression", requestOptions)
+        const response = await fetch("https://himmpat.com/api/service/himmuc_api/patent_search/get_filter_results_by_query_expression", requestOptions)
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+        
+        // 检查是否被限流
+        if (data.code === 100) {
+            // 更新loading提示为限流提示
+            const loadingDiv = document.querySelector('.text-center.py-8');
+            if (loadingDiv) {
+                loadingDiv.innerHTML = `
+                    <div class="text-yellow-600 mb-4">
+                        <p class="font-semibold">请求被限流</p>
+                        <p class="text-sm">系统正在等待30秒后重试...</p>
+                    </div>
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-yellow-600 border-t-transparent"></div>
+                `;
+            }
+            
+            if (retryCount < 3) { // 最多重试3次
+                console.log('请求被限流，等待30秒后重试...');
+                await new Promise(resolve => setTimeout(resolve, 30000)); // 等待30秒
+                return fetchBaseData(query, countField, retryCount + 1); // 递归重试
+            } else {
+                throw new Error('请求被限流，已达到最大重试次数');
+            }
+        }
+
+        return data;
     } catch (error) {
         console.error('获取基础数据时出错:', error);
         throw error;
     }
-
 }
 
 // 获取所有基础数据
@@ -340,7 +365,7 @@ function calculatePatentValue(technicalValue, legalValue, economicValue) {
 async function processExcelData(jsonData) {
     // 获取基础数据
     const baseData = await Promise.all(jsonData.map(async (row) => {
-        return await fetchAllBaseData(row['IPC主分类'] + '/ic', row['申请人'] + '/paas');
+        return await fetchAllBaseData(row['IPC主分类'] + '/ic', row['第一专利权人'] + '/paas1');
     }));
     console.log('==========bae', baseData);
     
@@ -387,11 +412,11 @@ async function processExcelData(jsonData) {
         let marketShareScore;
         if (marketSharePercentage > 40) {
             marketShareScore = 10;
-        } else if (marketSharePercentage >= 30) {
+        } else if (marketSharePercentage >= 11) {
             marketShareScore = 8;
-        } else if (marketSharePercentage >= 20) {
+        } else if (marketSharePercentage >= 7) {
             marketShareScore = 6;
-        } else if (marketSharePercentage >= 10) {
+        } else if (marketSharePercentage >= 3) {
             marketShareScore = 4;
         } else if (marketSharePercentage > 0) {
             marketShareScore = 2;
@@ -473,6 +498,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // 禁用文件上传
+            fileInput.disabled = true;
+            uploadZone.style.opacity = '0.5';
+            uploadZone.style.cursor = 'not-allowed';
+            
+            // 清空之前的结果
+            const analysisResults = document.getElementById('analysisResults');
+            analysisResults.innerHTML = '';
+            
+            // 显示loading效果
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'text-center py-8';
+            loadingDiv.innerHTML = `
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+                <p class="mt-4 text-gray-600">正在计算中，请稍候...</p>
+            `;
+            analysisResults.appendChild(loadingDiv);
+            
             // 更新上传区域显示选中的文件名
             const uploadText = uploadZone.querySelector('h3');
             const uploadDesc = uploadZone.querySelector('p');
@@ -494,6 +537,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 将工作表转换为JSON对象数组
                     const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+                    // 检查数据条数
+                    if (jsonData.length > 4) {
+                        alert('文件数据条数不能超过4条，请重新上传！');
+                        // 恢复上传区域的默认显示
+                        resetUploadZone();
+                        // 隐藏分析面板
+                        analysisPanel.style.display = 'none';
+                        // 启用文件上传
+                        fileInput.disabled = false;
+                        uploadZone.style.opacity = '1';
+                        uploadZone.style.cursor = 'pointer';
+                        return;
+                    }
                     // 使用异步处理函数处理数据
                     const processedData = await processExcelData(jsonData);
 
@@ -503,8 +559,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 显示分析面板
                     analysisPanel.style.display = 'block';
 
-                    // 更新分析面板中的数据
-                    updateAnalysisPanel(processedData);
+                    // 添加1秒延迟后再更新分析面板
+                    setTimeout(() => {
+                        // 更新分析面板中的数据
+                        updateAnalysisPanel(processedData);
+                        
+                        // 启用文件上传
+                        fileInput.disabled = false;
+                        uploadZone.style.opacity = '1';
+                        uploadZone.style.cursor = 'pointer';
+                    }, 1000);
 
                 } catch (error) {
                     console.error('解析Excel数据时出错:', error);
@@ -513,6 +577,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     resetUploadZone();
                     // 隐藏分析面板
                     analysisPanel.style.display = 'none';
+                    // 启用文件上传
+                    fileInput.disabled = false;
+                    uploadZone.style.opacity = '1';
+                    uploadZone.style.cursor = 'pointer';
                 }
             };
 
@@ -523,6 +591,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 resetUploadZone();
                 // 隐藏分析面板
                 analysisPanel.style.display = 'none';
+                // 启用文件上传
+                fileInput.disabled = false;
+                uploadZone.style.opacity = '1';
+                uploadZone.style.cursor = 'pointer';
             };
 
             reader.readAsArrayBuffer(file);
@@ -534,6 +606,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resetUploadZone();
             // 隐藏分析面板
             analysisPanel.style.display = 'none';
+            // 启用文件上传
+            fileInput.disabled = false;
+            uploadZone.style.opacity = '1';
+            uploadZone.style.cursor = 'pointer';
         }
     });
 
@@ -565,8 +641,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetUploadZone() {
         const uploadText = uploadZone.querySelector('h3');
         const uploadDesc = uploadZone.querySelector('p');
+        const uploadTip = uploadZone.querySelector('h4');
         uploadText.textContent = '点击或拖拽上传 Excel 文件';
-        uploadDesc.textContent = '支持 .xlsx, .xls 格式文件';
+        uploadDesc.textContent = '数据条数需<=4，否则可能触发上游限流';
+        uploadTip.textContent = '支持 .xlsx, .xls 格式文件';
         // 隐藏分析面板
         analysisPanel.style.display = 'none';
     }
