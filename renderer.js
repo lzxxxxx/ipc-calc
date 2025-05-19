@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'text-center py-8';
             loadingDiv.innerHTML = `
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#0470bc] border-t-transparent"></div>
                 <p class="mt-4 text-gray-600">正在计算中，请稍候...</p>
             `;
             analysisResults.appendChild(loadingDiv);
@@ -670,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">技术价值度</h4>
-                        <span class="text-2xl font-bold text-primary">${(item.technicalValue.advancement * 0.2343 + item.technicalValue.dependency * 0.1367 + item.technicalValue.maturity * 0.0954).toFixed(2)}</span>
+                        <span class="text-2xl font-bold text-[#0470bc]">${(item.technicalValue.advancement * 0.2343 + item.technicalValue.dependency * 0.1367 + item.technicalValue.maturity * 0.0954).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -690,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">法律价值度</h4>
-                        <span class="text-2xl font-bold text-primary">${(item.legalValue.unavoidable * 0.1367 + item.legalValue.stability.total * 0.1562 + item.legalValue.multiCountry * 0.0694).toFixed(2)}</span>
+                        <span class="text-2xl font-bold text-[#0470bc]">${(item.legalValue.unavoidable * 0.1367 + item.legalValue.stability.total * 0.1562 + item.legalValue.multiCountry * 0.0694).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -710,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 rounded-lg p-6">
                     <div class="flex justify-between items-center">
                         <h4 class="font-semibold text-lg text-gray-900">经济价值度</h4>
-                        <span class="text-2xl font-bold text-primary">${(item.economicValue.life * 0.1041 + item.economicValue.marketShare * 0.0672).toFixed(2)}</span>
+                        <span class="text-2xl font-bold text-[#0470bc]">${(item.economicValue.life * 0.1041 + item.economicValue.marketShare * 0.0672).toFixed(2)}</span>
                     </div>
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="bg-gray-50 rounded-lg p-4 text-center">
                     <span class="text-lg text-gray-600 mr-4">专利价值度</span>
-                    <span class="text-4xl font-bold text-primary">${item.patentValue}</span>
+                    <span class="text-4xl font-bold text-[#0470bc]">${item.patentValue}</span>
                 </div>
             `;
             analysisResults.appendChild(resultDiv);
