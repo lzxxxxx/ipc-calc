@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron')
 const XLSX = require('xlsx')
+const ipcData = require('./ipc_data.js')
 
 // 需要分析ipc分类号的字段：
 // 受理局 没有  apc
@@ -163,6 +164,7 @@ function calculateAT2(AC, AO) {
     return 0; // 默认情况
 }
 
+/*
 // 获取基础数据
 async function fetchBaseData(query = '', countField = 'PTY', retryCount = 0) {
     var myHeaders = new Headers();
@@ -188,7 +190,7 @@ async function fetchBaseData(query = '', countField = 'PTY', retryCount = 0) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+        
         const data = await response.json();
         
         // 检查是否被限流
@@ -311,6 +313,12 @@ async function fetchAllBaseData(ipcQuery, applicantQuery) {
 
     return allData;
 }
+*/
+
+// 从JS文件获取基础数据
+async function getBaseDataFromJson() {
+    return ipcData;
+}
 
 // 计算技术成熟度得分
 function calculateTechnicalMaturity(baseData) {
@@ -361,115 +369,130 @@ function calculatePatentValue(technicalValue, legalValue, economicValue) {
     return totalScore;
 }
 
-// 添加异步数据处理函数
+// 修改processExcelData函数
 async function processExcelData(jsonData) {
-    // 获取基础数据
-    const baseData = await Promise.all(jsonData.map(async (row) => {
-        return await fetchAllBaseData(row['IPC主分类'] + '/ic', row['第一专利权人'] + '/paas1');
-    }));
-    console.log('==========bae', baseData);
-    
-    // 计算系数
-    // const coefficients = calculateCoefficients(baseData);
-    
-    return await Promise.all(jsonData.map(async (row, index) => {
-        // 计算技术先进性的子项
-        // AC（分析IPC分类号）=受理局为中国且专利权人为中国的专利数量/受理局的中国的专利数量
-        // AO（分析IPC分类号）=受理局为非中国且专利权人为中国的专利数量/受理局的非中国的专利数量
-        const AT1Score = calculateAT1(row);
-        const AC = baseData[index].AC_1/baseData[index].AC_2;
-        const AO = (baseData[index].AC_3 - baseData[index].AC_1)/(baseData[index].sum - baseData[index].AC_2);
-        const AT2Score = calculateAT2(AC, AO);
+    try {
+        // 获取基础数据
+        const baseData = await getBaseDataFromJson();
         
-        // 计算技术先进性总分 (0.2AT1 + 0.8AT2)
-        const technicalAdvancementScore = 0.2 * AT1Score + 0.8 * AT2Score;
+    return await Promise.all(jsonData.map(async (row, index) => {
+            const ipcCode = row['IPC主分类'];
+            const applicant = row['第一专利权人'];
+            
+            // 获取该IPC分类号下的数据
+            const ipcData = baseData[ipcCode];
+            if (!ipcData) {
+                throw new Error(`未找到IPC分类号 ${ipcCode} 的数据`);
+            }
 
-        //技术独立性得分
-        const technicalDependencyScore = (baseData[index].sum - baseData[index].jishudulixing)/baseData[index].sum * 10;
+            // 计算技术先进性的子项
+            const AT1Score = calculateAT1(row);
+            const AC = ipcData.AC_1/ipcData.AC_2;
+            const AO = (ipcData.AC_3 - ipcData.AC_1)/(ipcData.sum - ipcData.AC_2);
+            const AT2Score = calculateAT2(AC, AO);
+            
+            // 计算技术先进性总分 (0.2AT1 + 0.8AT2)
+            const technicalAdvancementScore = 0.2 * AT1Score + 0.8 * AT2Score;
 
-        //技术成熟度得分 = 开根号(2024sum * 2024personSum) - 开根号(2023sum * 2023personSum)
-        const technicalMaturityScore = calculateTechnicalMaturity(baseData[index]);
+            //技术独立性得分
+            const technicalDependencyScore = (ipcData.sum - ipcData.jishudulixing)/ipcData.sum * 10;
+
+            //技术成熟度得分 = 开根号(2024sum * 2024personSum) - 开根号(2023sum * 2023personSum)
+            const technicalMaturityScore = calculateTechnicalMaturity(ipcData);
 
         // 计算专利稳定性的三个子项
-        const B1_1 = calculateB1_1(row);  // 引用专利数量/文献页数×5
-        const B1_2 = calculateB1_2(row);  // 独立权利要求中"其特征在于"后面的字数/独立权利要求总字数×10
-        const B1_3 = calculateB1_3(row);  // 权利要求数（最高10分）
+            const B1_1 = calculateB1_1(row);
+            const B1_2 = calculateB1_2(row);
+            const B1_3 = calculateB1_3(row);
 
         // 计算专利稳定性总分
         const stabilityScore = 0.4 * B1_1 + 0.4 * B1_2 + 0.2 * B1_3;
-        
-        // 计算专利不可规避性
-        const unavoidableScore = calculateUnavoidable(row);
-        
-        // 计算多国申请分数
-        const multiCountryScore = calculateMultiCountry(row);
-        
-        // 计算经济寿命分数
-        const economicLifeScore = calculateEconomicLife(row);
+            
+            // 计算专利不可规避性
+            const unavoidableScore = calculateUnavoidable(row);
+            
+            // 计算多国申请分数
+            const multiCountryScore = calculateMultiCountry(row);
+            
+            // 计算经济寿命分数
+            const economicLifeScore = calculateEconomicLife(row);
 
-        //计算市场占有率
-        const marketSharePercentage = (baseData[index].C2_1 / baseData[index].jishudulixing) * 100;
-        let marketShareScore;
-        if (marketSharePercentage > 40) {
-            marketShareScore = 10;
-        } else if (marketSharePercentage >= 11) {
-            marketShareScore = 8;
-        } else if (marketSharePercentage >= 7) {
-            marketShareScore = 6;
-        } else if (marketSharePercentage >= 3) {
-            marketShareScore = 4;
-        } else if (marketSharePercentage > 0) {
-            marketShareScore = 2;
-        } else {
-            marketShareScore = 0;
-        }
-        
-
-        // 计算专利价值度总分
-        const patentValue = calculatePatentValue(
-            {
-                advancement: technicalAdvancementScore,
-                dependency: technicalDependencyScore,
-                maturity: technicalMaturityScore
-            },
-            {
-                unavoidable: unavoidableScore,
-                stability: { total: stabilityScore },
-                multiCountry: multiCountryScore
-            },
-            {
-                life: economicLifeScore,
-                marketShare: marketShareScore
+            //计算市场占有率
+            const marketSharePercentage = (ipcData.C2_1 / ipcData.jishudulixing) * 100;
+            let marketShareScore;
+            if (marketSharePercentage > 40) {
+                marketShareScore = 10;
+            } else if (marketSharePercentage >= 11) {
+                marketShareScore = 8;
+            } else if (marketSharePercentage >= 7) {
+                marketShareScore = 6;
+            } else if (marketSharePercentage >= 3) {
+                marketShareScore = 4;
+            } else if (marketSharePercentage > 0) {
+                marketShareScore = 2;
+            } else {
+                marketShareScore = 0;
             }
-        );
+            
+
+            // 计算专利价值度总分
+            const patentValue = calculatePatentValue(
+                {
+                    advancement: technicalAdvancementScore,
+                    dependency: technicalDependencyScore,
+                    maturity: technicalMaturityScore
+                },
+                {
+                    unavoidable: unavoidableScore,
+                    stability: { total: stabilityScore },
+                    multiCountry: multiCountryScore
+                },
+                {
+                    life: economicLifeScore,
+                    marketShare: marketShareScore
+                }
+            );
 
         return {
             id: index + 1,
-            publicationNumber: row['公开（公告）号'],
-            title: row['标题-原文'],
+                publicationNumber: row['公开（公告）号'],
+                title: row['标题-原文'],
             legalValue: {
                 stability: {
-                    total: parseFloat(stabilityScore.toFixed(2)),  // 专利稳定性总分
-                    B1_1: parseFloat(B1_1.toFixed(2)),            // B1.1 分数
-                    B1_2: parseFloat(B1_2.toFixed(2)),            // B1.2 分数
-                    B1_3: parseFloat(B1_3.toFixed(2))             // B1.3 分数
+                        total: parseFloat(stabilityScore.toFixed(2)),
+                        B1_1: parseFloat(B1_1.toFixed(2)),
+                        B1_2: parseFloat(B1_2.toFixed(2)),
+                        B1_3: parseFloat(B1_3.toFixed(2))
+                    },
+                    unavoidable: parseFloat(unavoidableScore.toFixed(2)),
+                    multiCountry: parseFloat(multiCountryScore.toFixed(2))
                 },
-                unavoidable: parseFloat(unavoidableScore.toFixed(2)),    // 不可规避性
-                multiCountry: parseFloat(multiCountryScore.toFixed(2))    // 多国申请
-            },
-            economicValue: {
-                life: parseFloat(economicLifeScore.toFixed(2)),    // 经济寿命
-                marketShare: marketShareScore
-            },
-            technicalValue: {
-                advancement: parseFloat(technicalAdvancementScore.toFixed(2)),  // 技术先进性总分
-                dependency: parseFloat(technicalDependencyScore.toFixed(2)),  // 技术独立性总分
-                maturity: parseFloat(technicalMaturityScore.toFixed(2)),  // 技术成熟度总分
-            },
-            patentValue: parseFloat(patentValue.toFixed(2)),  // 专利价值度总分
-            ...row
+                economicValue: {
+                    life: parseFloat(economicLifeScore.toFixed(2)),
+                    marketShare: marketShareScore
+                },
+                technicalValue: {
+                    advancement: parseFloat(technicalAdvancementScore.toFixed(2)),
+                    dependency: parseFloat(technicalDependencyScore.toFixed(2)),
+                    maturity: parseFloat(technicalMaturityScore.toFixed(2))
+                },
+                patentValue: parseFloat(patentValue.toFixed(2))
         };
     }));
+    } catch (error) {
+        // 显示错误提示
+        const analysisResults = document.getElementById('analysisResults');
+        analysisResults.innerHTML = `
+            <div class="text-center py-8">
+                <div class="text-red-600 mb-4">
+                    <p class="font-semibold">处理数据时出错</p>
+                    <p class="text-sm mt-2">${error.message}</p>
+                </div>
+                <p class="text-gray-600">请检查IPC数据文件是否完整，或联系管理员</p>
+            </div>
+        `;
+        throw error;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -561,9 +584,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // 添加1秒延迟后再更新分析面板
                     setTimeout(() => {
-                        // 更新分析面板中的数据
-                        updateAnalysisPanel(processedData);
-                        
+                    // 更新分析面板中的数据
+                    updateAnalysisPanel(processedData);
+
                         // 启用文件上传
                         fileInput.disabled = false;
                         uploadZone.style.opacity = '1';
@@ -643,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const uploadDesc = uploadZone.querySelector('p');
         const uploadTip = uploadZone.querySelector('h4');
         uploadText.textContent = '点击或拖拽上传 Excel 文件';
-        uploadDesc.textContent = '数据条数需<=4，否则可能触发上游限流';
+        // uploadDesc.textContent = '数据条数需<=4，否则可能触发上游限流';
         uploadTip.textContent = '支持 .xlsx, .xls 格式文件';
         // 隐藏分析面板
         analysisPanel.style.display = 'none';
