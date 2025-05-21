@@ -1,0 +1,39 @@
+# .github/workflows/build.yml
+name: Build Electron App on Windows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用 Ubuntu 作为构建环境
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'  # 或者你需要的 Node.js 版本
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the app
+        run: npm run make  # 或者你使用的打包命令 npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-exe
+          path: out/**  # 根据你的打包输出路径调整 npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
