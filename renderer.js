@@ -687,6 +687,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // 清空现有内容
         analysisResults.innerHTML = '';
 
+        // 创建导出按钮
+        const exportButton = document.createElement('div');
+        exportButton.className = 'text-right mb-2';
+        exportButton.innerHTML = `
+            <button class="text-sm text-blue-500 hover:underline">导出Excel</button>
+        `;
+        exportButton.querySelector('button').onclick = () => exportToExcel(data);
+        analysisResults.appendChild(exportButton);
+
         // 创建数据展示
         data.forEach(item => {
             const resultDiv = document.createElement('div');
@@ -771,6 +780,94 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             analysisResults.appendChild(resultDiv);
+        });
+    }
+
+    // 添加导出Excel功能
+    function exportToExcel(data) {
+        // 创建工作簿
+        const wb = XLSX.utils.book_new();
+        
+        // 准备导出数据
+        const exportData = data.map(item => {
+            if(item.errIpcCode) {
+                return {
+                    '公开（公告）号': item.publicationNumber,
+                    '标题': item.title,
+                    '错误信息': `IPC分类号 ${item.errIpcCode} 不存在`
+                };
+            }
+            
+            return {
+                '公开（公告）号': item.publicationNumber,
+                '标题': item.title,
+                '技术价值度': (item.technicalValue.advancement * 0.2343 + item.technicalValue.dependency * 0.1367 + item.technicalValue.maturity * 0.0954).toFixed(2),
+                '技术先进性': item.technicalValue.advancement,
+                '技术独立性': item.technicalValue.dependency,
+                '技术成熟度': item.technicalValue.maturity,
+                '法律价值度': (item.legalValue.stability.total * 0.1562 + item.legalValue.unavoidable * 0.1367 + item.legalValue.multiCountry * 0.0694).toFixed(2),
+                '专利稳定性': item.legalValue.stability.total,
+                '不可规避性': item.legalValue.unavoidable,
+                '多国申请情况': item.legalValue.multiCountry,
+                '经济价值度': (item.economicValue.life * 0.1041 + item.economicValue.marketShare * 0.0672).toFixed(2),
+                '剩余经济寿命': item.economicValue.life,
+                '市场占有率': item.economicValue.marketShare,
+                '专利价值度总分': item.patentValue
+            };
+        });
+
+        // 创建工作表
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        
+        // 设置列宽
+        const colWidths = [
+            { wch: 15 }, // 公开（公告）号
+            { wch: 50 }, // 标题
+            { wch: 12 }, // 技术价值度
+            { wch: 12 }, // 技术先进性
+            { wch: 12 }, // 技术独立性
+            { wch: 12 }, // 技术成熟度
+            { wch: 12 }, // 法律价值度
+            { wch: 12 }, // 专利稳定性
+            { wch: 12 }, // 不可规避性
+            { wch: 12 }, // 多国申请情况
+            { wch: 12 }, // 经济价值度
+            { wch: 12 }, // 剩余经济寿命
+            { wch: 12 }, // 市场占有率
+            { wch: 12 }  // 专利价值度总分
+        ];
+        ws['!cols'] = colWidths;
+
+        // 将工作表添加到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, "专利价值度分析结果");
+
+        // 将工作簿转换为二进制数据
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        
+        // 发送保存对话框请求到主进程
+        ipcRenderer.send('save-excel', {
+            buffer: wbout,
+            defaultPath: '专利价值度分析结果.xlsx'
+        });
+
+        // 监听保存对话框的响应
+        ipcRenderer.once('save-excel-response', (event, filePath) => {
+            if (filePath) {
+                // 如果用户选择了保存位置，发送保存文件请求
+                ipcRenderer.send('write-excel', {
+                    filePath: filePath,
+                    buffer: wbout
+                });
+            }
+        });
+
+        // 监听文件保存完成的响应
+        ipcRenderer.once('write-excel-response', (event, success) => {
+            if (success) {
+                alert('文件保存成功！');
+            } else {
+                alert('文件保存失败，请重试！');
+            }
         });
     }
 });

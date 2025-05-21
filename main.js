@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, autoUpdater } = require('electron/main')
 const path = require('node:path')
 const calc = require('./calc')
+const fs = require('fs')
 
 // 引入 electron-reload
 require('electron-reload')(path.join(__dirname), {
@@ -41,3 +42,34 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+// 处理保存Excel文件的请求
+ipcMain.on('save-excel', (event, data) => {
+    dialog.showSaveDialog({
+        title: '保存Excel文件',
+        defaultPath: data.defaultPath,
+        filters: [
+            { name: 'Excel文件', extensions: ['xlsx'] }
+        ]
+    }).then(result => {
+        if (!result.canceled) {
+            event.reply('save-excel-response', result.filePath);
+        } else {
+            event.reply('save-excel-response', null);
+        }
+    }).catch(err => {
+        console.error('保存对话框错误:', err);
+        event.reply('save-excel-response', null);
+    });
+});
+
+// 处理写入Excel文件的请求
+ipcMain.on('write-excel', (event, data) => {
+    try {
+        fs.writeFileSync(data.filePath, Buffer.from(data.buffer));
+        event.reply('write-excel-response', true);
+    } catch (err) {
+        console.error('写入文件错误:', err);
+        event.reply('write-excel-response', false);
+    }
+});
