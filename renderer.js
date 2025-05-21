@@ -67,7 +67,6 @@ function calculateB2_2(row) {
     
     // 避免除以0
     if (totalCount === 0) return 0;
-    console.log('===11', featuresCount, totalCount, (1 - featuresCount / totalCount) * 10);
     // 计算 (1 - 特征字数/总字数) × 10
     return (1 - featuresCount / totalCount) * 10;
 }
@@ -76,7 +75,6 @@ function calculateB2_2(row) {
 function calculateUnavoidable(row) {
     const B2_1 = calculateB2_1(row);
     const B2_2 = calculateB2_2(row);
-    console.log('======123123', B2_1, B2_2);
     return (B2_1 + B2_2) / 2;
 }
 
@@ -374,17 +372,26 @@ async function processExcelData(jsonData) {
     try {
         // 获取基础数据
         const baseData = await getBaseDataFromJson();
+        const dataset = require('./dataset');
         
-    return await Promise.all(jsonData.map(async (row, index) => {
+        return await Promise.all(jsonData.map(async (row, index) => {
             const ipcCode = row['IPC主分类'];
             const applicant = row['第一专利权人'];
             
             // 获取该IPC分类号下的数据
             const ipcData = baseData[ipcCode];
             if (!ipcData) {
-                throw new Error(`未找到IPC分类号 ${ipcCode} 的数据`);
+                // throw new Error(`未找到IPC分类号 ${ipcCode} 的数据`);
+                return {
+                    id: index + 1,
+                    publicationNumber: row['公开（公告）号'],
+                    title: row['标题-原文'],
+                    errIpcCode: row['IPC主分类']
+                };
             }
 
+            // 从dataset中获取c2_1的值
+            const c2_1 = dataset[ipcCode] && dataset[ipcCode][applicant] ? dataset[ipcCode][applicant].length : 0;
             // 计算技术先进性的子项
             const AT1Score = calculateAT1(row);
             const AC = ipcData.AC_1/ipcData.AC_2;
@@ -400,13 +407,13 @@ async function processExcelData(jsonData) {
             //技术成熟度得分 = 开根号(2024sum * 2024personSum) - 开根号(2023sum * 2023personSum)
             const technicalMaturityScore = calculateTechnicalMaturity(ipcData);
 
-        // 计算专利稳定性的三个子项
+            // 计算专利稳定性的三个子项
             const B1_1 = calculateB1_1(row);
             const B1_2 = calculateB1_2(row);
             const B1_3 = calculateB1_3(row);
 
-        // 计算专利稳定性总分
-        const stabilityScore = 0.4 * B1_1 + 0.4 * B1_2 + 0.2 * B1_3;
+            // 计算专利稳定性总分
+            const stabilityScore = 0.4 * B1_1 + 0.4 * B1_2 + 0.2 * B1_3;
             
             // 计算专利不可规避性
             const unavoidableScore = calculateUnavoidable(row);
@@ -418,7 +425,7 @@ async function processExcelData(jsonData) {
             const economicLifeScore = calculateEconomicLife(row);
 
             //计算市场占有率
-            const marketSharePercentage = (ipcData.C2_1 / ipcData.jishudulixing) * 100;
+            const marketSharePercentage = (c2_1 / ipcData.jishudulixing) * 100;
             let marketShareScore;
             if (marketSharePercentage > 40) {
                 marketShareScore = 10;
@@ -561,18 +568,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
                     // 检查数据条数
-                    if (jsonData.length > 4) {
-                        alert('文件数据条数不能超过4条，请重新上传！');
-                        // 恢复上传区域的默认显示
-                        resetUploadZone();
-                        // 隐藏分析面板
-                        analysisPanel.style.display = 'none';
-                        // 启用文件上传
-                        fileInput.disabled = false;
-                        uploadZone.style.opacity = '1';
-                        uploadZone.style.cursor = 'pointer';
-                        return;
-                    }
+                    // if (jsonData.length > 4) {
+                    //     alert('文件数据条数不能超过4条，请重新上传！');
+                    //     // 恢复上传区域的默认显示
+                    //     resetUploadZone();
+                    //     // 隐藏分析面板
+                    //     analysisPanel.style.display = 'none';
+                    //     // 启用文件上传
+                    //     fileInput.disabled = false;
+                    //     uploadZone.style.opacity = '1';
+                    //     uploadZone.style.cursor = 'pointer';
+                    //     return;
+                    // }
                     // 使用异步处理函数处理数据
                     const processedData = await processExcelData(jsonData);
 
@@ -684,6 +691,17 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(item => {
             const resultDiv = document.createElement('div');
             resultDiv.className = 'border border-gray-200 rounded-lg p-6';
+            if(item.errIpcCode){
+                resultDiv.innerHTML = `
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">${item.publicationNumber}</h3>
+                        <p class="text-gray-600 mt-1">${item.title}</p>
+                    </div>
+                    <h4 class="font-semibold text-lg text-gray-900">该IPC分类基础数据不存在，请检查IPC主分类号:${item.errIpcCode}</h4>
+                `;
+                analysisResults.appendChild(resultDiv);
+                return ;
+            }
             resultDiv.innerHTML = `
                 <div class="mb-6">
                     <h3 class="text-xl font-bold text-gray-900">${item.publicationNumber}</h3>
